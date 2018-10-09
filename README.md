@@ -1,4 +1,5 @@
 # ZxingZbar
+https://github.com/XieZhiFa/ZxingZbar
 极速扫码 Zxing Zbar 性能优化，极速秒扫 编译最新Zxing 编译最新Zbar 
 QQ 2227421573
 

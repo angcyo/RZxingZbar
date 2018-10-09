@@ -16,11 +16,13 @@
 
 package com.google.zxing.client.android;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -31,6 +33,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.KeyEvent;
@@ -180,10 +184,15 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
         resetStatusView();
 
 
-        beepManager.updatePrefs();
-        ambientLightManager.start(cameraManager);
-
-        inactivityTimer.onResume();
+//        beepManager.updatePrefs();
+//        ambientLightManager.start(cameraManager);
+//
+//        inactivityTimer.onResume();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            cameraResume();
+        } else {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, 101);
+        }
 
         Intent intent = getIntent();
 
@@ -260,12 +269,41 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
         if (hasSurface) {
             // The activity was paused but not stopped, so the surface still exists. Therefore
             // surfaceCreated() won't be called, so init the camera here.
-            initCamera(surfaceHolder);
+//            initCamera(surfaceHolder);
         } else {
             // Install the callback and wait for surfaceCreated() to init the camera.
             surfaceHolder.addCallback(this);
         }
     }
+
+    private void cameraResume() {
+        beepManager.updatePrefs();
+        ambientLightManager.start(cameraManager);
+        inactivityTimer.onResume();
+
+        SurfaceView surfaceView = (SurfaceView) findViewById(R.id.preview_view);
+        SurfaceHolder surfaceHolder = surfaceView.getHolder();
+        if (hasSurface) {
+            // The activity was paused but not stopped, so the surface still exists. Therefore
+            // surfaceCreated() won't be called, so init the camera here.
+            initCamera(surfaceHolder);
+        } else {
+            // Install the callback and wait for surfaceCreated() to init the camera.
+            //surfaceHolder.addCallback(this);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 101) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                cameraResume();
+            }
+        }
+    }
+
 
     private int getCurrentOrientation() {
         int rotation = getWindowManager().getDefaultDisplay().getRotation();
@@ -439,6 +477,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 
     /**
      * 解码成功的回调
+     *
      * @param result
      */
     public void handleDecode(String result) {

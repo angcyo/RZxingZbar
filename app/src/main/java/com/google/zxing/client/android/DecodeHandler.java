@@ -50,6 +50,8 @@ final class DecodeHandler extends Handler {
     private final CaptureActivity activity;
     private final MultiFormatReader multiFormatReader;
     private boolean running = true;
+    DecoderMode mDecoderMode = DecoderMode.Zbar; //默认扫码类型, 自动切换
+    long lastDecoderTime = 0L;
 
     DecodeHandler(CaptureActivity activity, Map<DecodeHintType, Object> hints) {
         multiFormatReader = new MultiFormatReader();
@@ -73,6 +75,14 @@ final class DecodeHandler extends Handler {
         }
     }
 
+    private void changeDecodeMode() {
+        if (mDecoderMode == DecoderMode.Zxing) {
+            mDecoderMode = DecoderMode.Zbar;
+        } else {
+            mDecoderMode = DecoderMode.Zxing;
+        }
+    }
+
     /**
      * Decode the data within the viewfinder rectangle, and time how long it took. For efficiency,
      * reuse the same reader objects from one decode to the next.
@@ -84,11 +94,13 @@ final class DecodeHandler extends Handler {
     private void decode(byte[] data, int width, int height) {
         long start = System.currentTimeMillis();
 
-
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(activity);
+        if (lastDecoderTime == 0) {
+            lastDecoderTime = start;
+        }
+//        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(activity);
         String resultQRcode = null;
 
-        if (DecoderMode.readPref(prefs) == DecoderMode.Zxing) { //如果扫描模式是Zxing
+        if (mDecoderMode == DecoderMode.Zxing) { //如果扫描模式是Zxing
 //            // --- add java进行数组的转换 速度很慢
 //            byte[] rotatedData = new byte[data.length];
 //            for (int y = 0; y < height; y++) {
@@ -150,7 +162,16 @@ final class DecodeHandler extends Handler {
         }
 
         long end = System.currentTimeMillis();
-        Log.d(TAG, "Found barcode in " + (end - start) + " ms");
+        //Log.d(TAG, "Found barcode in " + (end - start) + " ms");
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "处理帧 " + (end - start) + " ms " + mDecoderMode);
+        }
+
+        if ((end - start) < 1_000 && end - lastDecoderTime > 1_000) {
+            //1秒之后切换模式
+            changeDecodeMode();
+            lastDecoderTime = end;
+        }
 
 
         Handler handler = activity.getHandler();
